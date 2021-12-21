@@ -1,0 +1,223 @@
+---
+title: "Exploring Mass Shootings in America"
+author: "Angel Salazar"
+output: github_document
+---
+
+## Get the data
+
+```{r, echo = TRUE}
+library(tidyverse)    # load tidyverse packages, including ggplot2
+library(knitr)        # load functions for formatting tables
+library(dplyr)
+
+# get data from rcfss package
+# install latest version if not already installed
+# devtools::install_github("uc-cfss/rcfss")
+library(rcfss)
+
+# data("mass_shootings")
+mass_shootings# 
+```
+
+# Very Specific Prompts
+
+## [1] Generate a data frame that summarizes the number of mass shootings per year. Print the data frame as a formatted `kable()` table.
+
+```{r}
+# purpose of this code is to make a table with two columns
+# we are essentially grouping by year to then know how many incidents are 
+# documented per year
+x <- mass_shootings %>%
+  group_by(year) %>%
+  summarize(num_shootings = length(year))
+
+# col.names allows us to replace column names
+kable(x, col.names = c("Year", "Number of Shootings"), 
+      caption = "Mass Shootings, 1982 - 2019")
+```
+
+## [2] Generate a bar chart that identifies the number of mass shooters associated with each race category. The bars should be sorted from highest to lowest.
+
+```{r}
+# we are essentially creating a df where race = na is ommitted from data
+clean_data_race_na <- filter(mass_shootings, !is.na(race))
+
+# here we are plotting number of shootings by race
+# reorder comes in clutch to allow us to reorder
+# overall, -length(x) allows for decreasing order
+# without the - it is increasing order
+ggplot(data = clean_data_race_na, 
+       aes(x = reorder(race, race, function(x) -length(x)))) + 
+  geom_bar() +
+  labs(x = "Race", 
+       y = "Number of Mass Shootings", 
+       title = "Mass Shootings in the U.S., 1982-2019")
+
+```
+
+## [3] Generate a boxplot visualizing the number of total victims, by type of location. Redraw the same plot, but remove the Las Vegas Strip massacre from the dataset.
+
+```{r}
+# process to exclude las vegas strip massacre
+mydata_exclusion_LVS <- mass_shootings[-c(24),]
+
+# including LVS massacre in  a plot to show total victims by location type as a 
+# box plot
+ggplot(data = mass_shootings, 
+       aes(x = location_type, y = total_victims)) + 
+  geom_boxplot() + 
+  labs(x = "Location Tyoe", 
+       y = "Total Vicitms", 
+       title = "Mass Shootings in the U.S., 1982-2019")
+
+# similar to code on top except we use excluded LVS df
+# including subtitle to make it obvious, LVS exclusion
+ggplot(data = mydata_exclusion_LVS, 
+       aes(x = location_type, y = total_victims)) + 
+  geom_boxplot() + 
+  labs(x = "Location Tyoe", 
+       y = "Total Vicitms", 
+       title = "Mass Shootings in the U.S., 1982-2019",
+       subtitle = "Excluding Las Vegas Strip Massacre")
+```
+
+# More Open-Ended Questions
+
+## [1] How many white males with prior signs of mental illness initiated a mass shooting after 2000?
+
+```{r}
+# after so much struggling, this is the ultimate code that does everything in one
+# yaaaay
+# so we use filter and say create a new df where year value is higher than 2000,
+# race is white
+# and make value is TRUE to exclude females
+#overall just filtering stuff to fit with question
+newdata_mentally_ill_white_male_gen_z <- filter(mass_shootings, 
+                                               year > "2000",
+                                               race == "White",
+                                               prior_mental_illness == "Yes",
+                                               male == TRUE)
+
+# counting how many rows there is in the newly created data set
+# which has been reduced to white males with prior mental illness
+A <- nrow(newdata_mentally_ill_white_male_gen_z)
+A
+
+```
+*20 white males with prior signs of mental illness initiated a mass shooting after 2000*
+
+## [2] Which month of the year has the most mass shootings? Generate a bar chart sorted in chronological order to provide evidence of your answer.
+
+```{r}
+# here we are plotting num of shootings by month
+# then we have to order chronologically and scale_x_discrete allows us when we 
+# use month.abb (abbreviated)
+ggplot(data = mass_shootings, aes(x = month,)) + geom_bar() + 
+  scale_x_discrete(limits = month.abb) +
+  labs(x = "Month", 
+       y = "Number of Mass Shootings", 
+       title = "Mass Shootings in the U.S., 1982-2019")
+```
+
+*February and June are the months of the year with the most mass shootings as can
+be seen from the included bar chart*
+
+
+## [3] How does the distribution of mass shooting fatalities differ between white and black shooters? What about white and latino shooters?
+
+```{r}
+# best way would be to exclude any other races then run what I have below
+data_black_latino_white <- filter(mass_shootings,
+                                  race %in% c("Black", "White", "Latino"))
+
+# figure 1
+# gonna stack the bar graphs and split by race
+ggplot(data = data_black_latino_white, 
+       aes(x = fatalities)) + 
+  geom_bar() + 
+  facet_grid(rows = vars(race)) +
+  labs(x = "Fatalities per Incident", 
+       y = "Number of Incidentsr", 
+       title = "Mass Shootings in the U.S., 1982-2019")
+
+# figure 2
+# essentially showing same thing as bar graph but with ~lines~
+# no need for facet grid here
+ggplot(data = data_black_latino_white, 
+       aes(x = fatalities, group = race, color = race)) + 
+  geom_freqpoly() +
+  labs(x = "Fatalities per Incident", 
+       y = "Incidents", 
+       title = "Mass Shootings in the U.S., 1982-2019")
+```
+
+*As can be seen from the included figures, white people tend to kill more people*
+*whenever they shoot up places in order to massacre others.*
+*Overall, both Black and Brown folk have not killed over 20 people whenever they*
+*decide to shoot up places.*
+*Moreover, white people are numerically the race that tend to do mass shootings.*
+*Next would be Black people and lastly, Latino people.*
+*The difference between both black and latino people and white people is*
+*significant in terms of incidents.*
+
+# Very Open-Ended
+
+## [1] Are mass shootings with shooters suffering from mental illness different from mass shootings with no signs of mental illness in the shooter? Assess the relationship between mental illness and total victims, mental illness and race, and the intersection of all three variables.
+
+Answer: In cases where a mass shooter has prior mental illness indicators, more
+people die. Thus, it can be surmised that people with prior mental illness will
+kill more people than people with no prior mental illness. On average, white
+people mass shootings have more total victims than other races (excluding other).
+It would seem okay to assume that most people documented with prior mental illness
+indicators are white. Overall though, most mass shooters tend to be white. We would
+need more data to explore relationship between mental illness and race in my view.
+Overall, as can be summarized by the third boxplot figure, showing indications of 
+mental illness can be related to higher total victims. Incidents where the shooter
+is white may indicate higher total victims on average. Lastly, irrespective of race,
+mental illness will be highly likely than not in terms of who is doing the mass
+shooting.
+```{r}
+# create data that excludes cases of NA in prior mental ilness
+data_exclude_mental_illness_na <- filter(mass_shootings, 
+                                      !is.na(prior_mental_illness))
+
+# assessing the relationship between mental illness and total victims
+ggplot(data = data_exclude_mental_illness_na,
+       aes(x = prior_mental_illness, y = total_victims)) +
+  geom_boxplot() + 
+  labs(x = "Evidence of Prior Mental Illness", 
+       y = "Total Victims", 
+       title = "Mass Shootings in the U.S., 1982-2019")
+
+# Assessing relationship between mental illness and race
+ggplot(data = filter(mydata_exclusion_LVS, !is.na(race)),
+       aes(x = race, y = total_victims)) +
+  geom_boxplot() +
+  labs(x = "Race of Mass Shooter", 
+       y = "Total Victims", 
+       title = "Mass Shootings in the U.S., 1982-2019",
+       subtitle = "excluding Las Vegas Strip Massacre")
+
+# assessing all three 
+# need data that omits race NA, mental_illness NA
+data_race_prior_mental_illness_cleanup <- filter(mass_shootings, 
+                                                 !is.na(race),
+                                                 !is.na(prior_mental_illness))
+
+ggplot(data = data_race_prior_mental_illness_cleanup, 
+       aes(x = total_victims, y = race, 
+       color = prior_mental_illness)) + geom_boxplot() +
+  labs(x = "Number of Total Victims", 
+       y = "Race of Mass Shooter", 
+       title = "Mass Shootings in the U.S., 1982-2019",
+       subtitle = "Excluding Las Vegas Strip Massacre")
+```
+
+## Session info
+
+```{r, echo = TRUE}
+devtools::session_info()
+```
+
+
