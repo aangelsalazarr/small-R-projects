@@ -1,0 +1,514 @@
+---
+title: "US & Global Energy Forecast Data"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# importing necessary libraries
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+```
+
+
+```{r data import, include = FALSE}
+# total energy production data
+tot_energy_production <- read.csv("data/Total_Energy_Production.csv")
+
+# total energy use data
+tot_energy_use <- read.csv("data/Total_Energy_Use.csv")
+
+# total energy imports data
+tot_energy_imports <- read.csv("data/Total_Energy_Imports.csv")
+
+# total energy exports data
+tot_energy_exports <- read.csv("data/Total_Energy_Exports.csv")
+
+# total energy real prices data
+tot_energy_real_prices <- read.csv("data/Total_Energy_Real_Prices.csv")
+
+# CO2 emissions by Fuel type
+emissions_by_fuel_type <- read.csv("data/Carbon_Dioxide_Total_by_Fuel.csv")
+
+# Renewable Energy generating capacity
+renewable_capacity <- read.csv("data/Renewable_Energy_Generating_Capacity.csv")
+
+# renewable energy capacity additions
+renewable_additions <- read.csv("data/Renewable_Energy_Capacity_Additions.csv")
+
+# energy use oecd vs non-oecd
+global_energy_use <- read.csv("data/energy_use_OECD_non_OECD.csv")
+
+# emissions by OECD
+emissions_from_OECD <- read.csv("data/Carbon_dioxide_emissions_OECD.csv")
+
+# emissions non OECD
+emissions_from_non_OECD <- read.csv("data/Carbon_dioxide_emissions_non_OECD.csv")
+```
+
+```{r data transformation, include = FALSE}
+#transforming energy production data - LETS GOOOO
+new_energy_production <- tot_energy_production %>%
+  select(year = Year, 
+         liquidfuels = Crude.Oil.and.Lease.Condensate.quads,
+         naturalgas = Natural.Gas.Plant.Liquids.quads,
+         coal = Coal.quads,
+         nuclear = Nuclear.quads,
+         hydropower = Hydropower.quads,
+         biomass = Biomass.quads,
+         other_renewable_energy = Other.Renewable.Energy.quads,
+         other = Other.quads,
+         total = Total.quads) %>%
+  pivot_longer(c("liquidfuels", "naturalgas", "coal", "nuclear", "hydropower", 
+                 "biomass", "other_renewable_energy", "other", "total"), 
+               names_to = "fueltype", values_to = "quads") %>%
+    drop_na() # removing any NA values to avoid error message
+
+
+# Checking new df
+new_energy_production
+
+# transforming energy consumption data
+new_energy_use <- tot_energy_use %>%
+  select(year = Year, 
+         liquidfuels = Liquid.Fuels.quads,
+         naturalgas = Natural.Gas.quads,
+         coal = Coal.quads,
+         nuclear = Nuclear.quads,
+         hydropower = Hydropower.quads,
+         biomass = Biomass.quads,
+         other_renewable_energy = Other.Renewable.Energy.quads,
+         other = Other.quads,
+         total = Total.quads) %>%
+  pivot_longer(c("liquidfuels", "naturalgas", "coal", "nuclear", "hydropower", 
+                 "biomass", "other_renewable_energy", "other", "total"), 
+               names_to = "fueltype", 
+               values_to = "quads") %>%
+    drop_na()
+
+# checking new df
+new_energy_use
+
+# transforming import data
+new_energy_imports <- tot_energy_imports %>%
+  select(year = Year, 
+         crudeoil = Crude.Oil.quads,
+         liquidfuels = Liquid.Fuels.quads,
+         naturalgas = Natural.Gas.quads,
+         other = Other.quads,
+         total = Total.quads) %>%
+  pivot_longer(c("crudeoil", "liquidfuels", "naturalgas", "other", "total"), 
+               names_to = "fueltype", 
+               values_to = "quads") %>%
+    drop_na()
+
+# check new imports df
+new_energy_imports
+
+# transforming export data
+new_energy_exports <- tot_energy_exports %>%
+  select(year = Year,
+         petroleum = Petroleum.quads,
+         naturalgas = Natural.Gas.quads,
+         coal = Coal.quads,
+         total = Total.quads) %>%
+  pivot_longer(c("petroleum", "naturalgas", "coal", "total"), 
+               names_to = "fueltype", 
+               values_to = "quads") %>%
+    drop_na()
+
+# checking new exports df
+new_energy_exports
+
+# transforming real prices forecast
+energy_real_prices <- tot_energy_real_prices %>%
+  select(year = Year, 
+         brent = Brent..2020...b..2020...b,
+         wti = West.Texas.Intermediate..2020...b..2020...b,
+         gas_henry_hub = Gas.Price.at.Henry.Hub..2020...MMBtu..2020...MMBtu,
+         coal_minemouth_ton = Coal.at.Minemouth..2020...ton..2020...ton,
+         coal_minemouth = Coal.Minemouth..2020...MMBtu..2020...MMBtu,
+         deliver_coal = Delivered.Coal..2020...MMBtu..2020...MMBtu,
+         electricity = Electricity..2020.cents.kWh..2020.cents.kWh) %>%
+  pivot_longer(c("brent", "wti", "gas_henry_hub", "coal_minemouth", 
+                 "coal_minemouth_ton", "deliver_coal","electricity"),
+               names_to = "index", 
+               values_to = "price") %>%
+    drop_na()
+
+# checking energy real prices df
+energy_real_prices
+
+# transform emissions data
+emissions <- emissions_by_fuel_type %>%
+  select(year = Year, 
+         petroleum = Petroleum.MMmt.CO2,
+         naturalgas = Natural.Gas.MMmt.CO2,
+         coal = Coal.MMmt.CO2,
+         other = Other.MMmt.CO2,
+         total = Total.MMmt.CO2) %>%
+  pivot_longer(c("petroleum", "naturalgas", "coal", "other", "total"), 
+               names_to = "fueltype", 
+               values_to = "mmotco2") %>%
+    drop_na()
+
+# checking emissions df
+emissions
+
+# transform renewable energy capacity
+capacity <- renewable_capacity %>%
+  select(year = Year, 
+         hydropower = Hydropower.GW,
+         geothermal = Geothermal.GW,
+         mun_waste = Municipal.Waste.GW, 
+         biomass = Wood.and.Other.Biomass.GW,
+         solar_thermal = Solar.Thermal.GW,
+         solar_pv = Solar.Photovoltaic.GW,
+         wind = Wind.GW,
+         offshore = Offshore.Wind.GW,
+         total = Total.GW) %>%
+  pivot_longer(c("hydropower", "geothermal", "mun_waste", "biomass", 
+                 "solar_thermal", "solar_pv", "wind","offshore", "total"),
+               names_to = "type", 
+               values_to = "gw") %>%
+    drop_na()
+
+# check capacity df
+capacity
+
+# transform capacity additions 
+cap_adds <- renewable_additions %>%
+  select(year = Year, 
+         hydropower = Hydropower.GW,
+         geothermal = Geothermal.GW,
+         mun_waste = Municipal.Waste.GW, 
+         biomass = Wood.and.Other.Biomass.GW,
+         solar_thermal = Solar.Thermal.GW,
+         solar_pv = Solar.Photovoltaic.GW,
+         wind = Wind.GW,
+         offshore = Offshore.Wind.GW,
+         total = Total.GW) %>%
+  pivot_longer(c("hydropower", "geothermal", "mun_waste", "biomass", 
+                 "solar_thermal", "solar_pv", "wind","offshore", "total"),
+               names_to = "type", 
+               values_to = "gw")%>%
+    drop_na()
+
+# check capacity additions df
+cap_adds
+
+# transform data for global energy use
+energy_use_global <- global_energy_use %>%
+  select(year = Year, 
+         oecd_total = OECD..Total.OECD.quad.Btu,
+         non_oecd_total = Non.OECD..Total.Non.OECD.quad.Btu) %>%
+  pivot_longer(c("oecd_total", "non_oecd_total"),
+               names_to = "region", 
+               values_to = "quadbtu") %>%
+    drop_na()
+
+# check energy global use data frame
+energy_use_global
+
+# transform oecd emissions
+oecd_emissions <- emissions_from_OECD %>%
+  select(year = Year, 
+         Americas = OECD.Americas.MMmt,
+         Europe = OECD.Europe.MMmt,
+         Asia = OECD.Asia.MMmt,
+         total = Total.OECD.MMmt) %>%
+  pivot_longer(c("Americas", "Europe", "Asia", "total"),
+               names_to = "region",
+               values_to = "MMmt") %>%
+    drop_na()
+
+# check oecd emissions df
+oecd_emissions
+
+# transform non oecd emissions
+non_oecd_emissions <- emissions_from_non_OECD %>%
+  select(year = Year, 
+         eur = Non.OECD.Europe.and.Eurasia.MMmt,
+         asia = Non.OECD.Asia.MMmt,
+         middleeast = Middle.East.MMmt,
+         africa = Africa.MMmt,
+         americas = Non.OECD.Americas.MMmt,
+         total = Total.Non.OECD.MMmt) %>%
+  pivot_longer(c("eur", "asia", "middleeast", "africa", 
+                 "americas",
+                 "total"),
+               names_to = "region",
+               values_to = "MMmt")%>%
+    drop_na()
+
+# check oecd emissions df
+non_oecd_emissions
+
+```
+
+```{r export import deep data transformation, include = FALSE}
+# here, we want to put import/export data together in one df
+exports <- new_energy_exports %>%
+  mutate(direction = "Exports")
+
+# show data frame
+exports
+
+# here we are doing the same but for import
+imports <- new_energy_imports %>%
+  mutate(direction = "Imports")
+
+# show imports data frame now
+imports
+
+# joining the two data sets
+export_import <- rbind(exports, imports)
+
+# show joined data frame 
+export_import
+
+```
+
+```{r renewables deep data transformation, include=FALSE}
+# here we want to try and put capacity and capacity addition into one df
+# adding established value to all rows
+capacity_est <- capacity %>%
+  mutate(status = "Established")
+
+# show our df
+capacity_est
+
+# add addition value to all rows
+capacity_addition <- cap_adds %>%
+  mutate(status = "Addition")
+
+# show our df
+capacity_addition
+
+# bind the two yaya
+capacity_overview <- rbind(capacity_est, 
+                           capacity_addition)
+
+# show our binded df
+capacity_overview
+
+```
+
+
+```{r US consumption/producton deep data transformation, include=FALSE}
+# here we want to combine like we have before data sets
+# for these dfs we will do it by if they are consumption or production values
+
+consumption <- new_energy_use %>%
+  mutate(result="Consumed")
+
+production <- new_energy_production %>%
+  mutate(result="Produced")
+
+# stack our dfs on top of eachother 
+usenergy <- rbind(consumption, production)
+usenergy
+```
+
+```{r OECD and Non OECD deep data transformation, include = FALSE}
+# our goal is to bind dfs for OECD and non OECD emissions and label 
+# each respective row by its economic type
+
+# first, OECD
+oecd <- oecd_emissions %>%
+  mutate(econ_type = "OECD")
+
+# now, non-oecd
+non_oecd <- non_oecd_emissions %>%
+  mutate(econ_type = "Non-OECD")
+
+# binding both dfs together 
+world_emissions <- rbind(oecd, non_oecd)
+
+```
+
+
+
+#### **Energy**
+
+##### The purpose of this report is to use publicly available data from the Energy
+##### Information Administration (EIA) in order to think about the following questions:
+1. Within a U.S. context, what do we expect energy to look like up until 2050?
+2. Within a U.S. context, where is Renewable Energy headed?
+3. Within a global context, what will energy and emissions look like thinking 
+forward to 2050?
+
+##### Before moving forward, it should be acknowledged that the data analyzed in this
+##### report falls under the EIA 2020 Reference Case. This reference case maintains
+##### very minimal volatility and variation in terms of energy related growth and 
+##### development. Overall, said data is also based on current energy policy within
+##### the United States. There are many more scenarios/cases but for the sake of 
+##### wordcount and codelines, this report limits its analyzatin to only the described
+##### reference case in order to explore how energy is set to change moving forward.
+
+
+#### **US Consumption vs Production Forecasts**
+
+##### The figure below demonstrates EIA Reference case forecasts on energy consumption
+##### and production from 2020 to 2050. One observation from the data is that
+##### renewable energy is set to grow by roughly 200% from 2020 to 2050. While that is
+##### a positive observation as it relates to how energy consumption and production is
+##### made up, it can be observed that both [natural gas] and [liquid fuels] are set to 
+##### make up the majority of energy consumption up until 2050. 
+```{r US Production/Consumption plots, echo=FALSE, include = TRUE}
+# here we are plotting energy consumption and production and differentiating by
+# if the energy data is consumption or production
+# overall we don't need total values because it makes data less readable
+usenergy %>%
+  filter (fueltype != "total") %>%
+  ggplot() + geom_line(aes(x = year, 
+                            y = quads, 
+                            color = fueltype)) + 
+  labs(x = "Year", y = "quads", title = "Energy Consumption by Fuel Type, 
+       USA 2020 - 2050") + theme(legend.position = "bottom") +
+  facet_grid(cols=vars(result))
+
+```
+
+
+
+#### **US Export vs Import Forecasts**
+
+##### Petroleum Exports are expected to peak around 2026 and then steadily decline by 
+##### 2050. Natural Gas Exports on the other hand are expexcted to steadily rise while 
+#### Coal exports are expected to decline very slowly to 2050. 
+
+#### In terms of imports, Crude Oil is expected to, on average, increase in terms of imports by 2050. All other fuel types are expected to decline. 
+
+#### Looking at export/import data forecasts for the US, it can be assumed that overall, 
+#### US current energy policy will be successfull in leading to a decline of trade with 
+#### non-renewable fuels, although the decline will be very slow. Overall, up until 2050,
+#### trade of fossil fuels is expected to reman relatively high. 
+```{r US Import/Export Plots, echo=FALSE}
+# plotting the binded df
+export_import %>%
+  filter (fueltype != "total") %>%
+  ggplot() + geom_line(aes(x = year, 
+                            y = quads, 
+                            color = fueltype)) + 
+  labs(x = "Year", y = "quads", title = "Energy Exports/Imports by Fuel Type, 
+       USA 2020 - 2050") + theme(legend.position = "bottom") +
+  facet_grid(cols = vars(direction))
+
+```
+
+
+#### **US Energy Prices Forecasts**
+
+##### Lookinga the the included figure, both BRENT CRUDE and WTI CRUDE are expected to
+##### peak real prices by 2050. Said indexes are expected to reach the $90+ range. 
+##### Referring back to the US energy production graph, this makes sense given there is
+##### set to to be a very small decrease in Liquid Fuels Production moving forward. 
+##### Moreover, one must acknowlege the global market when taking into consideration 
+##### energy prices. It is expected that many nations will phase out fossil fuels 
+##### moving forward. This can be expected to drive up oil prices moving forward. 
+##### What is interesting is that electricity prices are set to slightly decrease 
+##### moving forward until 2050.
+
+```{r US Energy Prices Plot, echo=FALSE}
+# plotting indexes forecast
+energy_real_prices %>%
+  ggplot() + geom_line(aes(x = year, 
+                           y = price, 
+                           color = index)) + 
+  labs(x = "Year", y = "price", title = "Energy Real Prices by Index, 
+       USA 2020 - 2050") + theme(legend.position = "bottom")
+
+```
+
+
+#### **US Emissions Forecasts**
+
+##### Emissions related to Petroleum and Natural Gas are expected to rise in the US
+##### up until 2050. On the other hand, coal is set to slowly decline from approximatley
+##### 880 MMmt of CO2 to roughly below 650 MMmt of CO2 in 2050. This expected decline 
+##### alongside the aforementioned Fuel Type emissions increases seem to indicate an
+##### overall decrease of US emissions.
+```{r US Emissions Plot, echo=FALSE}
+# plotting emissions by fuel type
+emissions %>%
+  filter (fueltype != "total") %>%
+  ggplot() + geom_line(aes(x = year, 
+                           y = mmotco2, 
+                           color = fueltype)) + 
+  labs(x = "Year", y = "MMmt CO2", title = "Carbon Emissions by Fuel Type, 
+       USA 2020 - 2050") + theme(legend.position = "bottom")
+
+```
+
+
+#### **US Renewable Energy Forecasts**
+
+##### The data in this figure indicates that Solar and Wind energy technologies
+##### are set to grow exponentially over the next few decades. For example, as it
+##### relates to Solar PV technology, there is an expected 300 Gw increase from 
+#### 2020 to 2050. That is roughly a %600 increase from 2020 levels.
+```{r Renewable Energy Plots, echo=FALSE}
+# binded plots differentiated by status
+capacity_overview %>%
+  filter (type != "total") %>%
+  ggplot() + geom_line(aes(x = year, 
+                           y = gw, 
+                           color = type)) + 
+  labs(x = "Year", y = "Gigawatts", title = "Energy Capacity by Type, 
+       USA 2020 - 2050") + theme(legend.position = "bottom") +
+  facet_grid(cols = vars(status))
+
+```
+
+
+#### **Global Energy and Emissions Forecast**
+
+##### As expected, non-OECD countries are expected to grow at an alarming rate
+##### in terms of how much energy is consumed. This can be assume to be partially
+##### due to economic development and population growth. OECD energy use is expected
+##### to remain under 300 quads Btu in 2050, whereas non-OECD energy use is expected
+##### to reach above 600 quads Btu, essentially double the energy use of OECD countries.
+
+##### It can be observed from the World Carbon Emissions graph below that non-OECD
+##### Asian countries are expected to make up the majority of carbon emissions by 2050.
+##### OECD countries are essentially projected to remain in slow decline by 2050. 
+```{r Global plots, echo=FALSE}
+# plotting global energy use
+energy_use_global %>%
+  ggplot() + geom_line(aes(x = year, 
+                           y = quadbtu,
+                           color = region)) + 
+  labs(x = "Year", y = "quad Btu", title = "Global Energy Use, 2010 - 2050") +
+  theme(legend.position = "bottom")
+
+# plotting oecd emissions
+world_emissions %>%
+  filter(region != "total") %>%
+  ggplot() + geom_line(aes(x = year,
+                           y = MMmt, 
+                           color = region)) + 
+  labs(x = "Year", y = "MMmt CO2", title = "Global Carbon Emissions by Economic Region,
+       2010 - 2050") + theme(legend.position = "bottom") +
+  facet_grid(cols=vars(econ_type))
+
+```
+
+#### **Conclusion**
+
+##### In conclusion, the above data presents a pretty unexciting trend of energy 
+##### moving forward. Interesting developments that can be observed to be positive
+##### include a rapid expansion of Renewable Energy Technology and Capacity.
+##### As exciting as that is however, there is the fact that non-renewable fuels 
+##### will remain very present in our energy mix up until 2050. Moreover, there is
+##### an observed hurdle awaiting us in the future related to emsissions growth. 
+##### It is forecasted that emissions from non-OECD countries is set to be double
+##### that of OECD countries. This is bad news as it foreshadows a failure on OECD
+##### countries to provide financial and technological support for emerging economies
+##### related to energy use and production. Thus, overall, renewable technology is not
+##### expected to growth at a fast enough pace given current energy policies in the US.
+##### Lastly, energy use is expected to continue growing and at a consisten pace, meaning
+##### that, given population growth and developing economy growth, the issue related
+##### to energy consumption and emissions can be assumed to only continue to get bigger. 

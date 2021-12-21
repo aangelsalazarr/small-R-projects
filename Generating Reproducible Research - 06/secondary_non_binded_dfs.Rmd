@@ -1,0 +1,410 @@
+---
+title: "US & Global Energy Forecast Data"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# importing necessary libraries
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+```
+
+
+```{r data import, include = FALSE}
+# total energy production data
+tot_energy_production <- read.csv("data/Total_Energy_Production.csv")
+
+# total energy use data
+tot_energy_use <- read.csv("data/Total_Energy_Use.csv")
+
+# total energy imports data
+tot_energy_imports <- read.csv("data/Total_Energy_Imports.csv")
+
+# total energy exports data
+tot_energy_exports <- read.csv("data/Total_Energy_Exports.csv")
+
+# total energy real prices data
+tot_energy_real_prices <- read.csv("data/Total_Energy_Real_Prices.csv")
+
+# CO2 emissions by Fuel type
+emissions_by_fuel_type <- read.csv("data/Carbon_Dioxide_Total_by_Fuel.csv")
+
+# Renewable Energy generating capacity
+renewable_capacity <- read.csv("data/Renewable_Energy_Generating_Capacity.csv")
+
+# renewable energy capacity additions
+renewable_additions <- read.csv("data/Renewable_Energy_Capacity_Additions.csv")
+
+# energy use oecd vs non-oecd
+global_energy_use <- read.csv("data/energy_use_OECD_non_OECD.csv")
+
+# emissions by OECD
+emissions_from_OECD <- read.csv("data/Carbon_dioxide_emissions_OECD.csv")
+
+# emissions non OECD
+emissions_from_non_OECD <- read.csv("data/Carbon_dioxide_emissions_non_OECD.csv")
+```
+
+```{r data transformation, include = FALSE}
+#transforming energy production data - LETS GOOOO
+new_energy_production <- tot_energy_production %>%
+  select(year = Year, 
+         liquidfuels = Crude.Oil.and.Lease.Condensate.quads,
+         naturalgas = Natural.Gas.Plant.Liquids.quads,
+         coal = Coal.quads,
+         nuclear = Nuclear.quads,
+         hydropower = Hydropower.quads,
+         biomass = Biomass.quads,
+         other_renewable_energy = Other.Renewable.Energy.quads,
+         other = Other.quads,
+         total = Total.quads) %>%
+  pivot_longer(c("liquidfuels", "naturalgas", "coal", "nuclear", "hydropower", 
+                 "biomass", "other_renewable_energy", "other", "total"), 
+               names_to = "fueltype", values_to = "quads") %>%
+    drop_na() # removing any NA values to avoid error message
+
+
+# Checking new df
+new_energy_production
+
+# transforming energy consumption data
+new_energy_use <- tot_energy_use %>%
+  select(year = Year, 
+         liquidfuels = Liquid.Fuels.quads,
+         naturalgas = Natural.Gas.quads,
+         coal = Coal.quads,
+         nuclear = Nuclear.quads,
+         hydropower = Hydropower.quads,
+         biomass = Biomass.quads,
+         other_renewable_energy = Other.Renewable.Energy.quads,
+         other = Other.quads,
+         total = Total.quads) %>%
+  pivot_longer(c("liquidfuels", "naturalgas", "coal", "nuclear", "hydropower", 
+                 "biomass", "other_renewable_energy", "other", "total"), 
+               names_to = "fueltype", 
+               values_to = "quads") %>%
+    drop_na()
+
+# checking new df
+new_energy_use
+
+# transforming import data
+new_energy_imports <- tot_energy_imports %>%
+  select(year = Year, 
+         crudeoil = Crude.Oil.quads,
+         liquidfuels = Liquid.Fuels.quads,
+         naturalgas = Natural.Gas.quads,
+         other = Other.quads,
+         total = Total.quads) %>%
+  pivot_longer(c("crudeoil", "liquidfuels", "naturalgas", "other", "total"), 
+               names_to = "fueltype", 
+               values_to = "quads") %>%
+    drop_na()
+
+# check new imports df
+new_energy_imports
+
+# transforming export data
+new_energy_exports <- tot_energy_exports %>%
+  select(year = Year,
+         petroleum = Petroleum.quads,
+         naturalgas = Natural.Gas.quads,
+         coal = Coal.quads,
+         total = Total.quads) %>%
+  pivot_longer(c("petroleum", "naturalgas", "coal", "total"), 
+               names_to = "fueltype", 
+               values_to = "quads") %>%
+    drop_na()
+
+# checking new exports df
+new_energy_exports
+
+# transforming real prices forecast
+energy_real_prices <- tot_energy_real_prices %>%
+  select(year = Year, 
+         brent = Brent..2020...b..2020...b,
+         wti = West.Texas.Intermediate..2020...b..2020...b,
+         gas_henry_hub = Gas.Price.at.Henry.Hub..2020...MMBtu..2020...MMBtu,
+         coal_minemouth_ton = Coal.at.Minemouth..2020...ton..2020...ton,
+         coal_minemouth = Coal.Minemouth..2020...MMBtu..2020...MMBtu,
+         deliver_coal = Delivered.Coal..2020...MMBtu..2020...MMBtu,
+         electricity = Electricity..2020.cents.kWh..2020.cents.kWh) %>%
+  pivot_longer(c("brent", "wti", "gas_henry_hub", "coal_minemouth", 
+                 "coal_minemouth_ton", "deliver_coal","electricity"),
+               names_to = "index", 
+               values_to = "price") %>%
+    drop_na()
+
+# checking energy real prices df
+energy_real_prices
+
+# transform emissions data
+emissions <- emissions_by_fuel_type %>%
+  select(year = Year, 
+         petroleum = Petroleum.MMmt.CO2,
+         naturalgas = Natural.Gas.MMmt.CO2,
+         coal = Coal.MMmt.CO2,
+         other = Other.MMmt.CO2,
+         total = Total.MMmt.CO2) %>%
+  pivot_longer(c("petroleum", "naturalgas", "coal", "other", "total"), 
+               names_to = "fueltype", 
+               values_to = "mmotco2") %>%
+    drop_na()
+
+# checking emissions df
+emissions
+
+# transform renewable energy capacity
+capacity <- renewable_capacity %>%
+  select(year = Year, 
+         hydropower = Hydropower.GW,
+         geothermal = Geothermal.GW,
+         mun_waste = Municipal.Waste.GW, 
+         biomass = Wood.and.Other.Biomass.GW,
+         solar_thermal = Solar.Thermal.GW,
+         solar_pv = Solar.Photovoltaic.GW,
+         wind = Wind.GW,
+         offshore = Offshore.Wind.GW,
+         total = Total.GW) %>%
+  pivot_longer(c("hydropower", "geothermal", "mun_waste", "biomass", 
+                 "solar_thermal", "solar_pv", "wind","offshore", "total"),
+               names_to = "type", 
+               values_to = "gw") %>%
+    drop_na()
+
+# check capacity df
+capacity
+
+# transform capacity additions 
+cap_adds <- renewable_additions %>%
+  select(year = Year, 
+         hydropower = Hydropower.GW,
+         geothermal = Geothermal.GW,
+         mun_waste = Municipal.Waste.GW, 
+         biomass = Wood.and.Other.Biomass.GW,
+         solar_thermal = Solar.Thermal.GW,
+         solar_pv = Solar.Photovoltaic.GW,
+         wind = Wind.GW,
+         offshore = Offshore.Wind.GW,
+         total = Total.GW) %>%
+  pivot_longer(c("hydropower", "geothermal", "mun_waste", "biomass", 
+                 "solar_thermal", "solar_pv", "wind","offshore", "total"),
+               names_to = "type", 
+               values_to = "gw")%>%
+    drop_na()
+
+# check capacity additions df
+cap_adds
+
+# transform data for global energy use
+energy_use_global <- global_energy_use %>%
+  select(year = Year, 
+         oecd_total = OECD..Total.OECD.quad.Btu,
+         non_oecd_total = Non.OECD..Total.Non.OECD.quad.Btu) %>%
+  pivot_longer(c("oecd_total", "non_oecd_total"),
+               names_to = "region", 
+               values_to = "quadbtu") %>%
+    drop_na()
+
+# check energy global use data frame
+energy_use_global
+
+# transform oecd emissions
+oecd_emissions <- emissions_from_OECD %>%
+  select(year = Year, 
+         americas = OECD.Americas.MMmt,
+         europe = OECD.Europe.MMmt,
+         asia = OECD.Asia.MMmt,
+         total = Total.OECD.MMmt) %>%
+  pivot_longer(c("americas", "europe", "asia", "total"),
+               names_to = "region",
+               values_to = "MMmt") %>%
+    drop_na()
+
+# check oecd emissions df
+oecd_emissions
+
+# transform non oecd emissions
+non_oecd_emissions <- emissions_from_non_OECD %>%
+  select(year = Year, 
+         non_eur = Non.OECD.Europe.and.Eurasia.MMmt,
+         non_asia = Non.OECD.Asia.MMmt,
+         middleeast = Middle.East.MMmt,
+         africa = Africa.MMmt,
+         non_americas = Non.OECD.Americas.MMmt,
+         total = Total.Non.OECD.MMmt) %>%
+  pivot_longer(c("non_eur", "non_asia", "middleeast", "africa", "non_americas",
+                 "total"),
+               names_to = "region",
+               values_to = "MMmt")%>%
+    drop_na()
+
+# check oecd emissions df
+non_oecd_emissions
+
+```
+
+```{r deep data transformation, include = FALSE}
+# here, we want to put import/export data together in one df
+exports <- new_energy_exports %>%
+  mutate(direction = "export")
+
+# show data frame
+exports
+
+# here we are doing the same but for import
+imports <- new_energy_imports %>%
+  mutate(direction = "import")
+
+# show imports data frame now
+imports
+
+# joining the two data sets
+export_import <- rbind(exports, imports)
+
+# show joined data frame 
+export_import
+
+```
+
+#### **Energy**
+##### The purpose of this report is to use publicly available data from the Energy
+##### Information Administration (EIA) in order to think about the following questions:
+1. Within a U.S. context, what do we expect energy to look like up until 2050?
+2. Within a U.S. context, where is Renewable Energy headed?
+3. Within a global context, what will energy and emissions look like thinking 
+forward to 2050?
+
+
+```{r US Production/Consumption plots, echo=FALSE, include = TRUE}
+# fix the data of total energy production
+# excluding total type given it only makes data less presentable
+# plotting production
+new_energy_production %>%
+  filter (fueltype != "total") %>%
+  ggplot(xmin = 2020, xmax = 2050) + geom_line(aes(x = year, 
+                            y = quads, 
+                            color = fueltype)) + 
+  labs(x = "Year", y = "quads", title = "Energy Production by Fuel Type, 
+       USA 2020 - 2050") + theme(legend.position = "bottom")
+
+# plotting energy consumption
+new_energy_use %>%
+  filter (fueltype != "total") %>%
+  ggplot() + geom_line(aes(x = year, 
+                            y = quads, 
+                            color = fueltype)) + 
+  labs(x = "Year", y = "quads", title = "Energy Consumption by Fuel Type, 
+       USA 2020 - 2050") + theme(legend.position = "bottom")
+
+```
+
+```{r US Import/Export Plots, echo=FALSE}
+# plotting imports
+new_energy_imports %>%
+  filter (fueltype != "total") %>%
+  ggplot() + geom_line(aes(x = year, 
+                            y = quads, 
+                            color = fueltype)) + 
+  labs(x = "Year", y = "quads", title = "Energy Imports by Fuel Type, 
+       USA 2020 - 2050") + theme(legend.position = "bottom")
+
+# plotting exports
+new_energy_exports %>%
+  filter (fueltype != "total") %>%
+  ggplot() + geom_line(aes(x = year, 
+                            y = quads, 
+                            color = fueltype)) + 
+  labs(x = "Year", y = "quads", title = "Energy Exports by Fuel Type, 
+       USA 2020 - 2050") + theme(legend.position = "bottom")
+
+# plotting the binded df
+export_import %>%
+  filter (fueltype != "total") %>%
+  ggplot() + geom_line(aes(x = year, 
+                            y = quads, 
+                            color = fueltype)) + 
+  labs(x = "Year", y = "quads", title = "Energy Exports/Imports by Fuel Type, 
+       USA 2020 - 2050") + theme(legend.position = "bottom") +
+  facet_grid(cols = vars(direction))
+
+```
+
+```{r US Energy Prices Plot, echo=FALSE}
+# plotting indexes forecast
+energy_real_prices %>%
+  ggplot() + geom_line(aes(x = year, 
+                           y = price, 
+                           color = index)) + 
+  labs(x = "Year", y = "price", title = "Energy Real Prices by Index, 
+       USA 2020 - 2050") + theme(legend.position = "bottom")
+
+```
+
+```{r US Emissions Plot, echo=FALSE}
+# plotting emissions by fuel type
+emissions %>%
+  filter (fueltype != "total") %>%
+  ggplot() + geom_line(aes(x = year, 
+                           y = mmotco2, 
+                           color = fueltype)) + 
+  labs(x = "Year", y = "MMmt CO2", title = "Carbon Emissions by Fuel Type, 
+       USA 2020 - 2050") + theme(legend.position = "bottom")
+
+```
+
+
+```{r Renewable Energy Plots, echo=FALSE}
+# plotting capacity by type
+capacity %>%
+  filter (type != "total") %>%
+  ggplot() + geom_line(aes(x = year, 
+                           y = gw, 
+                           color = type)) + 
+  labs(x = "Year", y = "Gigawatts", title = "Energy Capacity by Type, 
+       USA 2020 - 2050") + theme(legend.position = "bottom")
+
+# plotting capacity additions  by type
+cap_adds %>%
+  filter (type != "total") %>%
+  ggplot() + geom_line(aes(x = year, 
+                           y = gw, 
+                           color = type)) + 
+  labs(x = "Year", y = "Gigawatts", title = "Energy Capacity Additions by Type, 
+       USA 2021 - 2050") + theme(legend.position = "bottom")
+
+```
+
+
+```{r Global plots, echo=FALSE}
+# plotting global energy use
+energy_use_global %>%
+  ggplot() + geom_line(aes(x = year, 
+                           y = quadbtu,
+                           color = region)) + 
+  labs(x = "Year", y = "quad Btu", title = "Global Energy Use, 2010 - 2050") +
+  theme(legend.position = "bottom")
+
+# plotting oecd emissions
+oecd_emissions %>%
+  filter(region != "total") %>%
+  ggplot() + geom_line(aes(x = year,
+                           y = MMmt, 
+                           color = region)) + 
+  labs(x = "Year", y = "MMmt CO2", title = "OECD Carbon Emissions by Region,
+       2010 - 2050") + theme(legend.position = "bottom")
+
+# plotting non - oecd emissions
+non_oecd_emissions %>%
+  filter(region != "total") %>%
+  ggplot() + geom_line(aes(x = year,
+                           y = MMmt, 
+                           color = region)) + 
+  labs(x = "Year", y = "MMmt CO2", title = "Non-OECD Carbon Emissions by Region,
+       2010 - 2050") + theme(legend.position = "bottom")
+
+```
+
