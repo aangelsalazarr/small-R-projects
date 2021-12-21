@@ -1,0 +1,132 @@
+---
+title: "Exploring U.S. Supreme Court Decisions"
+author: "Angel Salazar"
+output: github_document
+---
+
+## Get the data
+
+```{r}
+# load useful packages
+library(tidyverse)
+
+# load data
+scdb_case <- read.csv("data/scdb-case.csv")
+scdb_vote <- read.csv("data/scdb-vote.csv")
+```
+
+## Notes 
+1. 'scdb-case.csv' contains all *case-level* variables
+    - contains one row for every case and one column for every variable
+2. 'scdb-vote.csv' contains all *vote-level* variables
+    - contains one row for every vote by a justice in every case and one
+        column for every variable
+3. For our purposes, the only ID variable we need to concern ourselves with is *caseIssuesId* but these may also be useful:
+    - chief
+    - dateDecision
+    - decisionDirection
+    - decisionType
+    - declarationUncon
+    - direction
+    - issueArea
+    - justice
+    - justiceName
+    - majority
+    - majVotes
+    - minVotes
+    - term
+
+## Recode variables as you find necessary
+
+```{r}
+# left join df
+scdb_left_join <- left_join(x = scdb_case, 
+                            y = scdb_vote, 
+                            by = NULL)
+
+# right join df
+scdb_right_join <- right_join(x = scdb_case, 
+                              y = scdb_vote, 
+                              by = NULL)
+
+# inner join df
+scdb_inner_join <- inner_join(x = scdb_case, 
+                              y = scdb_vote, 
+                              by = NULL)
+
+# full join df
+scdb_full_join <- full_join(x = scdb_case,
+                            y = scdb_vote, 
+                            by = NULL)
+```
+
+## What percentage of cases in each term are decided by a one-vote margin (i.e. 5-4, 4-3, etc.)
+
+```{r}
+# Here we will essentially have to filter out any data where each term is not
+# decided by a one-vote margin. From the included variables to consider in our
+# notes, the most relevant are (1) majority, (2) majVotes, and (3) minVotes
+# best way to calculate one-vote margin is => majVotes - minVotes
+# something to take into account is that term runs from 1791 to 2019
+
+# setting up a data framework to hold only the one-vote margins
+one_vote_margin <- filter(scdb_case, 
+                                    majVotes - minVotes == "1")
+
+# we also need to consider each term
+
+scdb_case %>%
+  
+```
+
+## For justices [currently serving on the Supreme Court](https://www.supremecourt.gov/about/biographies.aspx), how often have they voted in the conservative direction in cases involving criminal procedure, civil rights, economic activity, and federal taxation?
+
+Organize the resulting graph by justice in descending order of seniority. (Note that the chief justice is always considered the most senior member of the court, regardless of appointment date.)
+
+```{r}
+
+```
+
+## In each term, how many of the term's published decisions (decided after oral arguments) were announced in a given month?
+
+```{r}
+
+```
+
+## Which justices are most likely to agree with with the Court's declaration that an act of Congress, a state or territorial law, or a municipal ordinance is unconstitutional? Identify all cases where the Court declared something unconstitutional and determine the ten justices who most and least frequently agreed with this outcome as a percentage of all votes cast by the justice in these cases. Exclude any justice with fewer than 30 votes in cases where the Court's outcome declares something unconstitutional.
+
+```{r}
+
+```
+
+## In each term he served on the Court, in what percentage of cases was Justice Antonin Scalia in the majority?
+
+```{r}
+
+```
+
+## Create a graph similar to above that adds a second component which compares the percentage for all cases versus non-unanimous cases (i.e. there was at least one dissenting vote)
+
+```{r}
+
+```
+
+## In each term, what percentage of cases were decided in the conservative direction?
+
+```{r}
+
+```
+
+## The Chief Justice is frequently seen as capable of influencing the ideological direction of the Court. Create a graph similar to the one above that also incorporates information on who was the Chief Justice during the term.
+
+```{r}
+
+```
+
+## Session info
+
+```{r, echo = TRUE}
+devtools::session_info()
+```
+
+
