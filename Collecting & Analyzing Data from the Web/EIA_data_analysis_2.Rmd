@@ -1,0 +1,128 @@
+---
+title: "More Complicated Data Collection"
+author: "Angel Salazar"
+date: "11/29/2021"
+output: github_document
+---
+
+```{r setup, include=TRUE}
+## first we want to install and load package, "eia"
+## this will allow us to run eia_set_key("yourkey") in the future
+library(eia)
+
+## second we want to install and load package, "EIAdata"
+library(EIAdata)
+
+## other libraries we may need for data analysis
+library(ggplot2)
+library(tidyr)
+library(rjson)
+library(dplyr)
+
+```
+
+```{r EIA API Learning}
+## before we begin we must store our API Key to be used within the session
+## thus, we will run the following in our console: eia_set_key("yourkey")
+
+## function wngsr will return a list object containing the time the report was
+## run, and the contents of the US EIA's Weekly Natural Gas Storage Report
+## Function has no argument so just run wngsr()
+wngsr()
+
+## this will give us top-level category information
+eia_cats()
+
+```
+
+
+```{r us electricity generation by region}
+# this ID is for data grabbing aka electricity generation by year and all fuels
+id_electr_gen <- c("ELEC.GEN.ALL-99.A" ) # Annually
+
+## these are regions as shown in the API Query Browser
+regions <- c("East North Central", 
+            "East South Central", 
+            "Middle Atlantic",
+            "Mountain", 
+            "South Atlantic",
+            "West North Central", 
+            "West South Central", 
+            "Pacific Noncontiguous", 
+            "Pacific Contiguous")
+
+## this is just a list of all US States
+region_us_states <- state.name
+
+## here we are attaching out eia_geoset function to x as a complex vector
+x <- eia_geoset(id_electr_gen, 
+                regions[1], # changing regions[number] allows for other region graphs
+                n = 12)
+
+## selecting data from x
+select(x, region, data) %>% unnest(cols = data)
+
+## plotting our data pertaining to data, where color is by region specified
+## breaking up x tick marks to have more years than before
+unnest(x, cols = data) %>%
+  ggplot(aes(x = date, 
+             y = value, 
+             color = region)) + 
+  scale_x_date(breaks = scales::pretty_breaks(n = 5)) +
+  geom_line(size = 1.2) +
+  labs(y = x$units[1], 
+       title = "Net Electricity Generation (Annually)", 
+       subtitle = "From all fuels", 
+       color = regions[1]) 
+```
+
+```{r category exploration when you are lazy to go to website}
+## first lets run our handy eia_cats()
+eia_cats()
+
+## Now let's say we are interesting in short term energy outlook
+## notice the category id = 829714
+eia_cats(829714)
+
+## after running above, which looks into sub category of short term energy outlook
+## we know see more options that are like sub-sub categories
+## let's say we are interested in U.S. Prices and U.S Emissions
+## former has category id = 829715 and latter id = 1039844
+## let's focus on less boring, aka emissions
+eia_cats(1039844)
+
+## after running above code we get more subsets, best thing to note is last letter
+## is associated as follows
+## A = Annual , M = Monthly, and Q = Quarterly
+
+## I wanna know more about Annual and looking at all energy emissions
+## so i will note series_id = STEO.TETCCO2.A on 2nd page
+
+## lets create our lil complex vector but first run ?eia_series to get better help
+vector_emissions_annual <- eia_series(id = "STEO.TETCCO2.A", key = "538473c37338f7f3c4abc041829227f4")
+
+## okay we have it! now let's look at how our data is structured
+str(vector_emissions_annual$data)
+
+## let's note columns are value, date, and year up to 2022 (short term for sure)
+
+# unnesting the three nested data columns
+select(vector_emissions_annual, 
+       data) %>% unnest(cols = data)
+
+# unnesting and plotting our data
+unnest(vector_emissions_annual, 
+       cols = data) %>%
+  ggplot(aes(x = date, 
+             y = value)) + 
+  scale_x_date(breaks = scales::pretty_breaks(n=15)) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n=10)) + 
+  ylim(4000, 6500) +
+  geom_smooth() +
+  geom_line(size = 2) + # size = 10 looks super comical
+  labs(y = vector_emissions_annual$units[1], 
+       title = "U.S. Total Energy CO2 Emissions, Annual", 
+       subtitle = "Note: Pandemic Heavily Impacted Energy Use and Production in 2020")
+
+```
+

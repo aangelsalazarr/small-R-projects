@@ -1,0 +1,90 @@
+---
+title: "part1 - exploring gapminder"
+author: "Angel Salazar"
+date: "11/26/2021"
+output: github_document
+---
+
+```{r setup, include = TRUE}
+## using JSON may be required so this is a precautionary inclusion
+library(rjson)
+
+## We want to get the country information using geonames
+library(geonames)
+
+## will be using gapminder package
+library(gapminder)
+
+## will be using this package to merge dfs
+library(dplyr)
+library(tidyverse)
+
+## will need this to merge dfs based on unique key
+library(countrycode)
+
+```
+
+```{r geonames learning, include = FALSE, evaluate = FALSE}
+## have to set geonames username so that data can be grabbed
+options(geonamesUsername="angelsalazar11")
+
+## set of example calls
+# source(system.file("tests", "testing.R", package="geonames"), echo=TRUE)
+
+```
+
+```{r df creation}
+## here we want to create a df for gapminder
+gapminder_data <- gapminder
+
+## creating a df for geonames
+geonames_data <- GNcountryInfo()
+
+## want to get a glimpse of the df
+head(gapminder_data)
+head(geonames_data)
+
+
+```
+
+```{r transforming gapminder}
+## we want to add a column to our df, gapminder that is countryCode
+gapminder_data <- mutate(gapminder_data, 
+                         countryCode = countrycode(sourcevar = country, 
+                                                   origin = "country.name", 
+                                                   destination = "iso2c"))
+```
+
+```{r joining dataframes}
+## now we want to apply left_join() via the key of countryCode
+data_merged <- inner_join(
+  x = gapminder_data, 
+  y = geonames_data, 
+  by = "countryCode"
+)
+```
+
+```{r making a plot}
+## plotting life expectancy vs population
+data_merged %>%
+ mutate(pop = as.integer(pop) / 1e06) %>%
+  ggplot(mapping = aes(x = pop, 
+                       y = lifeExp)) + 
+  labs(x = "Population (in millions)", 
+       y = "Average Life Expectancy") +
+  geom_point() +
+  geom_smooth(method = NULL) 
+
+## plotting life expectancy vs population density
+## understand pop density = pop / country area
+data_merged %>%
+  mutate(population_density = as.integer(population) / as.integer(areaInSqKm)) %>%
+  ggplot(mapping = aes(x = population_density, 
+                       y = lifeExp)) +
+  labs(x = "Population Density (per Square Kilometer)",
+       y = "Average Life Expectancy") +
+  geom_point() +
+  geom_smooth(method = NULL) 
+
+```
+

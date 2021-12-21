@@ -1,0 +1,129 @@
+---
+title: "Machine Learning - Racist Profs"
+author: "Angel Salazar"
+date: "11/16/2021"
+output: github_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# we want to include the library of rcfss
+library(rcfss)
+library(tidyverse)
+library(dplyr)
+library(tidymodels)
+library(modeldata)
+library(stargazer)
+```
+
+
+```{r data injection, include=FALSE}
+# want to load dataframe of scorecard
+data_gss <- rcfss::gss
+
+# getting a sense of the structure of the df
+str(data_gss)
+
+# passing this code to see first few lines of code
+head(data_gss)
+
+# just printing out summary on data
+# can refer to this in the future to see which variables are in the data frame
+summary(data_gss)
+```
+
+```{r data splitting}
+# meant to allow us to randomly generate numbers for performing simulation and 
+# modeling
+set.seed(200)
+
+# here, we want to split the data into 75% training and 25% testing
+data_split <- initial_split(data_gss,
+                            strata = colrac, 
+                            prop = 0.75)
+                            
+# this will be the data for training
+data_train <- training(data_split)
+
+# this will be the data for testing
+data_test <- testing(data_split)
+```
+
+```{r data resampling, eval = FALSE,include=FALSE}
+# here we are going to resample our data
+set.seed(200)
+data_gss_folds <- vfold_cv(data_train, 
+                                  v = 10, 
+                                  strata = colrac)
+```
+
+```{r logistic regression model}
+# estimate a basic log regression model to predict debt as a function of the
+# included variables in the data set
+# report accuracy for the model
+set.seed(200)
+
+# running ?logistic_reg shows "glm" is the default
+
+# now we need to train our model with the given variables controlled 
+gss_log_mod <- logistic_reg(engine = "glm", 
+                            mode = "classification") %>%
+  fit(colrac ~ age + black + degree + partyid_3 + sex + south, 
+      data = data_train) %>%
+  predict(new_data = data_test) %>%
+  mutate(true_colrac = data_test$colrac)
+  
+# reporting RMSE for the model
+accuracy(data = gss_log_mod, true_colrac, estimate = .pred_class)
+
+```
+### Accuracy is: 0.537
+
+```{r ten cross fold validation}
+# please set the seed lol
+set.seed(200)
+
+# ten fold validation set up
+fold_validation <- vfold_cv(data = data_train, 
+                            v = 10, 
+                            strata = colrac)
+
+fold_validation
+
+# cross validation 
+cross_validation <- logistic_reg() %>%
+  fit_resamples(colrac ~ age + black + degree + partyid_3 + sex + south, 
+                resamples = fold_validation) %>%
+  collect_metrics(summarize=TRUE)
+
+cross_validation
+```
+
+### Accuracy is now: 0.520
+
+```{r random forest model}
+# use all vars except for id and wtss
+# need to impute missing vals for all the predictor columns
+# replace NA with plausible vals given what we know about other obs
+# remove rows w na for colrac
+# use median imputation for numeric predictors
+# us modal imputation for nominal predictors
+
+# ranger is default so need to override that as well as mode since its unknown rn
+r_forest_model <- rand_forest() %>%
+  set_engine("randomForest") %>%
+  set_mode("classification")
+
+# imputation steps 
+imputation_mods <- recipe(colrac ~., 
+                          data = data_train) %>%
+  step_impute_median(all_numeric_predictors()) %>%
+  step_impute_mode(all_nominal_predictors())
+
+# 
+
+
+```
+

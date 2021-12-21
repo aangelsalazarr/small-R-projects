@@ -1,0 +1,120 @@
+---
+title: "Machine Learning - Debt"
+author: "Angel Salazar"
+date: "11/11/2021"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# we want to include the library of rcfss
+library(rcfss)
+library(tidyverse)
+library(dplyr)
+library(tidymodels)
+library(modeldata)
+```
+
+
+```{r data injection, include=FALSE}
+# want to load dataframe of scorecard
+data_scorecard <- rcfss::scorecard
+
+# getting a sense of the structure of the df
+str(data_scorecard)
+
+# passing this code to see first few lines of code
+head(data_scorecard)
+
+# just printing out summary on data
+# can refer to this in the future to see which variables are in the data frame
+summary(data_scorecard)
+```
+
+```{r data splitting}
+# meant to allow us to randomly generate numbers for performing simulation and 
+# modeling
+set.seed(200)
+
+# here, we want to split the data into 75% training and 25% testing
+data_split <- initial_split(data_scorecard,
+                            strata = debt, 
+                            prop = 0.75)
+                            
+# this will be the data for training
+data_train <- training(data_split)
+
+# this will be the data for testing
+data_test <- testing(data_split)
+```
+
+```{r data resampling, eval = FALSE,include=FALSE}
+# here we are going to resample our data
+set.seed(200)
+data_scorecard_folds <- vfold_cv(data_train, 
+                                  v = 10, 
+                                  strata = debt)
+```
+
+```{r basic linear regression model}
+# estimate a basic linear regression model to predict debt as a function of all
+# other variables in the data set
+# EXCLUDE 'state'
+# report RMSE (Root Mean Square Error) for the model
+set.seed(200)
+
+# running ?linear_reg shows "lm" is the default
+
+# now we need to train our model with the given variables controlled 
+#except for state variable
+debt_lin_mod <- linear_reg() %>%
+  fit(debt ~ type + admrate + satavg + cost + netcost + avgfacsal + pctpell +
+        comprate + firstgen + locale, 
+      data = data_train) %>%
+  predict(new_data = data_test) %>%
+  mutate(true_debt = data_test$debt)
+  
+# reporting RMSE for the model
+rmse(data = debt_lin_mod, truth = true_debt, estimate = .pred)
+
+```
+
+### RMSE is : $3049.74
+
+```{r ten cross fold validation}
+# please set the seed lol
+set.seed(200)
+
+# ten fold validation set up
+fold_validation_debt <- vfold_cv(data = data_train, 
+                            v = 10, 
+                            strata = debt)
+
+fold_validation_debt
+
+# cross validation 
+cross_validation_debt <- linear_reg() %>%
+  fit_resamples(debt ~ type + admrate + satavg + cost + netcost + avgfacsal + 
+                  pctpell + comprate + firstgen + locale, 
+                resamples = fold_validation_debt) %>%
+  collect_metrics(summarize=TRUE)
+
+cross_validation_debt
+
+```
+### RMSE is now $3048.64
+
+```{r decision tree model}
+# Estimate a decision tree model to predict debt using ten fold cross validation
+# use the rpart engine. Report the RMSE for the model
+
+# need to set our seed
+set.seed(200)
+
+# making our tree model, ?decision_tree shows us regression not standard
+tree_model <- decision_tree() %>%
+  set_mode("regression") %>%
+  set_engine(engine = "rpart")
+```
+
